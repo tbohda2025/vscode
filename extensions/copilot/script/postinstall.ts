@@ -185,11 +185,13 @@ async function copyCopilotCliSkillsFiles(copilotCliSourceDir: string) {
 	const sourceDir = path.join(copilotCliSourceDir, 'builtin-skills');
 	const targetDir = path.join(COPILOT_PACKAGE_DIR, 'sdk', 'builtin-skills');
 
-	if (!fs.existsSync(sourceDir)) {
-		return;
+	try {
+		await copyCopilotCLIFolders(sourceDir, targetDir);
+	} catch (error) {
+		if ((error as NodeJS.ErrnoException).code !== 'ENOENT') {
+			throw error;
+		}
 	}
-
-	await copyCopilotCLIFolders(sourceDir, targetDir);
 }
 
 async function copyCopilotCliQueryFiles(copilotCliSourceDir: string) {
