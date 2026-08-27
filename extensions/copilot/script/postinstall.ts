@@ -233,7 +233,11 @@ async function copyCopilotCliPrebuildFiles(copilotCliSourceDir: string) {
 async function copyCopilotCLIFolders(sourceDir: string, targetDir: string) {
 	await fs.promises.rm(targetDir, { recursive: true, force: true });
 	await fs.promises.mkdir(targetDir, { recursive: true });
-	await fs.promises.cp(sourceDir, targetDir, { recursive: true, force: true });
+	await fs.promises.cp(sourceDir, targetDir, {
+		recursive: true,
+		force: true,
+		filter: source => path.basename(source) !== 'builtin-skills' || fs.existsSync(source),
+	});
 }
 
 /**
