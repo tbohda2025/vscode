@@ -1,0 +1,86 @@
+name: Code OSS Build & Package
+
+on:
+  workflow_dispatch:
+  push:
+    tags:
+      - "v*"
+
+concurrency:
+  group: build-package-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  build-package:
+    name: ${{ matrix.platform }}-${{ matrix.arch }}
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 90
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - platform: linux
+            arch: x64
+            runner: ubuntu-latest
+          - platform: darwin
+            arch: arm64
+            runner: macos-latest
+          - platform: win32
+            arch: x64
+            runner: windows-latest
+
+    env:
+      VSCODE_QUALITY: oss
+      VSCODE_ARCH: ${{ matrix.arch }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30deaf803 # v6.1.0
+        with:
+          lfs: true
+
+      - name: Setup Node.js
+        uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6.5.0
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+
+      - name: Install Linux build dependencies
+        if: matrix.platform == 'linux'
+        run: sudo apt-get update && sudo apt-get install --yes build-essential pkg-config libx11-dev libx11-xcb-dev libxkbfile-dev libnotify-dev libkrb5-dev
+
+      - name: Install dependencies
+        run: npm ci
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Compile
+        run: npm run gulp core-ci
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Package
+        run: npm run gulp vscode-${{ matrix.platform }}-${{ matrix.arch }}-min-ci
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Archive package (Linux/macOS)
+        if: matrix.platform != 'win32'
+        shell: bash
+        run: tar -czf "VSCode-${{ matrix.platform }}-${{ matrix.arch }}.tar.gz" -C .. "VSCode-${{ matrix.platform }}-${{ matrix.arch }}"
+
+      - name: Archive package (Windows)
+        if: matrix.platform == 'win32'
+        shell: pwsh
+        run: Compress-Archive -Path "..\VSCode-${{ matrix.platform }}-${{ matrix.arch }}" -DestinationPath "VSCode-${{ matrix.platform }}-${{ matrix.arch }}.zip"
+
+      - name: Upload package
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: vscode-${{ matrix.platform }}-${{ matrix.arch }}
+          path: VSCode-${{ matrix.platform }}-${{ matrix.arch }}.*
+          if-no-files-found: error
+          retention-days: 14
