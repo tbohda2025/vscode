@@ -482,12 +482,14 @@ export function packageCopilotExtensionStream(disableMangle: boolean): Stream {
 
 	const productionDependencies = getProductionDependencies('extensions/copilot');
 	const dependenciesSrc = productionDependencies.map(d => path.relative(root, d)).map(d => [`${d}/**`, `!${d}/**/{test,tests}/**`]).flat();
+	const copilotSdk = gulp.src(path.join(extensionPath, 'node_modules', '@github', 'copilot', 'sdk', '**'), { base: extensionPath, dot: true, allowEmpty: true });
 
 	return es.merge(
 		localExtensionsStream,
 		gulp.src(dependenciesSrc, { base: '.' })
 			.pipe(util2.cleanNodeModules(path.join(root, 'build', '.moduleignore')))
-			.pipe(util2.cleanNodeModules(path.join(root, 'build', `.moduleignore.${process.platform}`)))
+			.pipe(util2.cleanNodeModules(path.join(root, 'build', `.moduleignore.${process.platform}`))),
+		copilotSdk
 	).pipe(util2.setExecutableBit(['**/*.sh']));
 }
 
