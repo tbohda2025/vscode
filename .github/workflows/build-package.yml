@@ -67,6 +67,11 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
+      - name: Prepare Copilot Chat extension for packaging
+        run: npm run gulp compile-copilot-extension-build
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
       - name: Package
         run: npm run gulp vscode-${{ matrix.platform }}-${{ matrix.arch }}-min-ci
         env:
